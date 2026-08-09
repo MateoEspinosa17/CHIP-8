@@ -52,3 +52,28 @@ https://en.wikipedia.org/wiki/CHIP-8#Virtual_machine_description
 | `FX33` | BCD | `set_BCD(Vx);`<br>`*(I+0) = BCD(3);`<br>`*(I+1) = BCD(2);`<br>`*(I+2) = BCD(1);` | Stores the binary-coded decimal representation of VX, with the hundreds digit in memory at location in I, the tens digit at location I+1, and the ones digit at location I+2. |
 | `FX55` | MEM | `reg_dump(Vx, &I)` | Stores from V0 to VX (including VX) in memory, starting at address I. The offset from I is increased by 1 for each value written, but I itself is left unmodified.[d] |
 | `FX65` | MEM | `reg_load(Vx, &I)` | Fills from V0 to VX (including VX) with values from memory, starting at address I. The offset from I is increased by 1 for each value read, but I itself is left unmodified.[d] |
+
+# GCC (MinGW-w64) Installation and Configuration Guide on Windows
+
+Quick documentation guide to manually set up a portable C compiler and the `make` tool on Windows without relying on MSYS2.
+
+---
+
+## 1. Downloading and Installing MinGW-w64
+
+1. Go to the official **WinLibs** website (`winlibs.com`).
+2. In the downloads section, select the package with the following configuration:
+   * **Architecture:** `64-bit`
+   * **Threading model:** `POSIX`
+   * **C runtime:** `UCRT`
+   * **Release:** Executable archive in `.zip` (e.g., `winlibs-x86_64-posix-seh-gcc-...zip`).
+3. Extract the compressed folder. You will get a directory named `mingw64`.
+4. Move the `mingw64` folder to the root of your local drive **`C:\`** so that the path is exactly:
+   ```text
+   C:\mingw64
+5. Add to the user's PATH the `bin`folder within `mingw64` so we can execute it from any terminal.
+   ```text
+   C:\mingw64\bin
+6. Finally if we want to use `Makefiles`, we can copy and rename the `mingw32-make.exe` to just `make`, so whenever we run a a command we can just type
+   ```text
+   make run
