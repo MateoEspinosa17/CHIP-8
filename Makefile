@@ -2,8 +2,8 @@
 # VARIABLES DE CONFIGURACIÓN
 # ==========================================
 CC       := gcc
-CFLAGS   := -Wall -Wextra -pedantic -std=c11 -Iinclude -g
-LDFLAGS  := 
+CFLAGS   := -Wall -Wextra -pedantic -std=c11 -Iinclude -g -DSDL_MAIN_HANDLED
+LDFLAGS  := -lSDL2main -lSDL2
 TARGET   := main.exe
 
 # DIRECTORIOS
@@ -39,7 +39,7 @@ $(BUILD_DIR):
 # Compila y ejecuta el programa inmediatamente
 run: all
 	@echo [make] Running 
-		.\$(BUILD_DIR)\$(TARGET)
+	.\$(BUILD_DIR)\$(TARGET)
 
 # Limpia los archivos compilados para empezar desde cero
 clean:

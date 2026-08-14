@@ -15,9 +15,10 @@ We will follow Laurence Muller tutorial (https://multigesture.net/articles/how-t
 ## Opcode
 https://en.wikipedia.org/wiki/CHIP-8#Virtual_machine_description
 
+https://www.cs.columbia.edu/~sedwards/classes/2016/4840-spring/designs/Chip8.pdf
+
 | Opcode | Type | C pseudocode | Explanation |
 | :--- | :--- | :--- | :--- |
-| `0NNN` | Call | | Calls machine code routine (RCA 1802 for COSMAC VIP) at address NNN. Not necessary for most ROMs. |
 | `00E0` | Display | `disp_clear()` | Clears the screen. |
 | `00EE` | Flow | `return;` | Returns from a subroutine. |
 | `1NNN` | Flow | `goto NNN;` | Jumps to address NNN. |
@@ -58,8 +59,6 @@ https://en.wikipedia.org/wiki/CHIP-8#Virtual_machine_description
 Quick documentation guide to manually set up a portable C compiler and the `make` tool on Windows without relying on MSYS2.
 
 ---
-
-## 1. Downloading and Installing MinGW-w64
 
 1. Go to the official **WinLibs** website (`winlibs.com`).
 2. In the downloads section, select the package with the following configuration:
