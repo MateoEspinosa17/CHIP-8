@@ -32,7 +32,7 @@ uint8_t Chip8_Cpu_LoadROM(Chip8_Cpu *cpu, const char* filename) {
     rewind(file);
     
     if (rom_size > (MEMORY_SIZE - USER_PROGRAM_INITIAL_ADDRESS)){
-        printf("ROM size (%d bytes)is too big.\n", rom_size);
+        printf("ROM size (%d bytes) is too big.\n", rom_size);
         fclose(file);
         return 0x01;
     }
@@ -74,7 +74,7 @@ void Chip8_Cpu_EmulateCycle(Chip8_Cpu *cpu) {
                     break;
 
                 default:
-                    printf("[Error] Unkown Opcode [0x0000]: 0x%X\n", cpu->op_code);
+                    printf("[Error] Unkown Opcode: 0x%X\n", cpu->op_code);
                     break;
             }
             break;
@@ -94,6 +94,31 @@ void Chip8_Cpu_EmulateCycle(Chip8_Cpu *cpu) {
             cpu->program_counter = address;
             break;
 
+        case 0x3000: { // Skip if Vx == nn
+            register_index = (0x0F00 & cpu->op_code) >> 8;
+            uint8_t nn = 0x00FF & cpu->op_code;
+            
+            if (cpu->V[register_index] == nn) { cpu->program_counter += 4; } // Add 4 to skip next instruction.
+            else { cpu->program_counter += 2; } // Cond. not met, go to next instruction.
+            break;
+        }
+        
+        case 0x4000: { // Skip if Vx != nn
+            register_index = (0x0F00 & cpu->op_code) >> 8;
+            uint8_t nn = 0x00FF & cpu->op_code;
+            
+            if (cpu->V[register_index] == nn) { cpu->program_counter += 4; } // Add 4 to skip next instruction.
+            else { cpu->program_counter += 2; } // Cond. not met, go to next instruction.
+            break;
+        }
+
+        case 0x5000: // Skip if Vx == Vy
+            register_index = (0x0FF0 & cpu->op_code) >> 4; // register_index = 0xXY;
+            
+            if (cpu->V[register_index >> 4] == cpu->V[(register_index & 0x0F)]) { cpu->program_counter += 4; } // Add 4 to skip next instruction.
+            else { cpu->program_counter += 2; } // Cond. not met, go to next instruction.
+            break;
+
         case 0x6000:    // Set V[2nd nibble] register.
             register_index = (0x0F00 & cpu->op_code) >> 8;
             data = 0x00FF & cpu->op_code;
@@ -109,6 +134,48 @@ void Chip8_Cpu_EmulateCycle(Chip8_Cpu *cpu) {
             // Set data on register.
             cpu->V[register_index] += data;
             // Update program counter.
+            cpu->program_counter += 2;
+            break;
+
+        case 0x8000: 
+            switch (cpu->op_code & 0x000F){
+                uint8_t x = (cpu->op_code & 0x0F00) >> 8;
+                uint8_t y = (cpu->op_code & 0x00F0) >> 4;
+
+                case 0x0000: //Set Vx to Vy
+                    cpu->V[x] = cpu->V[y];
+                    break;
+                case 0x0001: // Set Vx |= Vy
+                    cpu->V[x] |= cpu->V[y];
+                    break;
+                case 0x0002: // Set Vx &= Vy
+                    cpu->V[x] &= cpu->V[y];
+                    break;
+                case 0x0003: // Set Vx ^= Vy
+                    cpu->V[x] ^= cpu->V[y];
+                    break;
+                case 0x0004: // Set Vx += Vy
+                    cpu->V[x] += cpu->V[y];
+                    break;
+                case 0x0005: // Set Vx -= Vy
+                    cpu->V[x] -= cpu->V[y];
+                    break;
+                case 0x0006: // Shift Vx >>= 1, store least significant bit of Vx in Vf
+                    cpu->V[0xF] = cpu->V[x] & 0x01;
+                    cpu->V[x] >>= 1;
+                    break;
+                case 0x0007: // Set Vx = Vy - Vx, Vf is set if there is no underflow, and 0 when there is (Vy > Vx)
+                    cpu->V[x] = cpu->V[y] - cpu->V[x];
+                    if (cpu->V[y] >= cpu->V[x]) { cpu->V[0xF] = 1; }
+                    break;
+                case 0x000E:// Shift Vx <<= 1, store most significant bit of Vx in Vf
+                    cpu->V[0xF] = (cpu->V[x] >> 7) & 0x01;
+                    cpu->V[x] <<= 1;
+                    break;
+                default:
+                    printf("[Error] Unkown Opcode: 0x%X\n", cpu->op_code);
+                    break;
+            }
             cpu->program_counter += 2;
             break;
 
