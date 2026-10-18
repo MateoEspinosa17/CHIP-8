@@ -6,17 +6,20 @@
 */
 void Chip8_Cpu_Initialize(Chip8_Cpu *cpu) {
     // First clear everything.
-    cpu->program_counter = USER_PROGRAM_INITIAL_ADDRESS;
-    cpu->op_code         = 0x00;
-    cpu->I               = 0x00;
-    cpu->delay_timer     = 0x00;
-    cpu->sound_timer     = 0x00;
-    cpu->stack_pointer   = 0x00;
+    cpu->program_counter    = USER_PROGRAM_INITIAL_ADDRESS;
+    cpu->op_code            = 0x00;
+    cpu->I                  = 0x00;
+    cpu->delay_timer        = 0x00;
+    cpu->sound_timer        = 0x00;
+    cpu->stack_pointer      = 0x00;
+    cpu->draw               = 0x00;
+    cpu->main_start         = 0x00000000;
 
     for (uint8_t i = 0; i < DATA_REGISTERS; i++){ cpu->V[i]     = 0x00; }
     for (uint16_t i = 0; i < MEMORY_SIZE; i++){ cpu->memory[i]  = 0x00; }
     for (uint8_t i = 0; i < STACK_SIZE; i++){ cpu->stack[i]     = 0x00; }
     for (uint16_t i = 0; i < GFX_BUFFER_SIZE; i++){ cpu->gfx[i]  = 0x00; }
+    for (uint16_t i = 0; i < KEYPAD_SIZE; i++){ cpu->keypad[i]  = 0x00; }
 }
 
 uint8_t Chip8_Cpu_LoadROM(Chip8_Cpu *cpu, const char* filename) {
@@ -49,6 +52,35 @@ uint8_t Chip8_Cpu_LoadROM(Chip8_Cpu *cpu, const char* filename) {
     return 0x00;    
 }
 
+void Chip8_Cpu_SetKey(Chip8_Cpu *cpu, uint8_t scan_code, uint8_t value)
+{
+    uint8_t index = 0;
+    switch (scan_code)
+    {
+        case KEYPAD_0: index =  0; break;
+        case KEYPAD_1: index =  1; break;
+        case KEYPAD_2: index =  2; break;
+        case KEYPAD_3: index =  3; break;
+        case KEYPAD_4: index =  4; break;
+        case KEYPAD_5: index =  5; break;
+        case KEYPAD_6: index =  6; break;
+        case KEYPAD_7: index =  7; break;
+        case KEYPAD_8: index =  8; break;
+        case KEYPAD_9: index =  9; break;
+        case KEYPAD_A: index = 10; break;
+        case KEYPAD_B: index = 11; break;
+        case KEYPAD_C: index = 12; break;   
+        case KEYPAD_D: index = 13; break;
+        case KEYPAD_E: index = 14; break;
+        case KEYPAD_F: index = 15; break;       
+        default:
+            printf("[Info] Scan Code 0x%02X not supported.\n", scan_code);
+            break;
+    }
+
+    cpu->keypad[index] = value;
+}
+
 void Chip8_Cpu_EmulateCycle(Chip8_Cpu *cpu) {
     uint16_t address = 0x0000;
     uint8_t register_index = 0x00;
@@ -57,7 +89,6 @@ void Chip8_Cpu_EmulateCycle(Chip8_Cpu *cpu) {
 
     // Fetch Opcode
     cpu->op_code = (cpu->memory[cpu->program_counter] << 8) | cpu->memory[cpu->program_counter + 1];
-    printf("[Info] Opcode: 0x%X\n", cpu->op_code);
     
     // Decode and Execute Opcode
     switch (cpu->op_code & 0xF000) {    // Usually the first nibble will have the instruction and the remaining 3 addresses or data
@@ -137,11 +168,10 @@ void Chip8_Cpu_EmulateCycle(Chip8_Cpu *cpu) {
             cpu->program_counter += 2;
             break;
 
-        case 0x8000: 
+        case 0x8000: {
+            uint8_t x = (cpu->op_code & 0x0F00) >> 8;
+            uint8_t y = (cpu->op_code & 0x00F0) >> 4;
             switch (cpu->op_code & 0x000F){
-                uint8_t x = (cpu->op_code & 0x0F00) >> 8;
-                uint8_t y = (cpu->op_code & 0x00F0) >> 4;
-
                 case 0x0000: //Set Vx to Vy
                     cpu->V[x] = cpu->V[y];
                     break;
@@ -178,6 +208,16 @@ void Chip8_Cpu_EmulateCycle(Chip8_Cpu *cpu) {
             }
             cpu->program_counter += 2;
             break;
+        }
+
+        case 0x9000: {    // Skips if Vx != Vy
+            uint8_t x = (cpu->op_code & 0x0F00) >> 8;
+            uint8_t y = (cpu->op_code & 0x00F0) >> 4;
+            
+            if (cpu->V[x] != cpu->V[y]) { cpu->program_counter += 4; }
+            else { cpu->program_counter += 2; }
+            break;
+        }
 
         case 0xA000:    // Sets I to the address.
             address = 0x0FFF & cpu->op_code;
@@ -185,6 +225,16 @@ void Chip8_Cpu_EmulateCycle(Chip8_Cpu *cpu) {
             cpu->I = address;
             // Update program counter.
             cpu->program_counter += 2;
+            break;
+
+        case 0xB000: // Jump to adress V0 + nnn
+            cpu->program_counter = cpu->V[0x0] + (cpu->op_code & 0x0FFF);
+            break;
+
+        case 0xC000: // Set Vx = nn & rand()
+            register_index = (cpu->op_code & 0x0F00) >> 8;
+            uint8_t nn = cpu->op_code & 0x00FF;
+            cpu->V[register_index] = (uint8_t)rand() & nn;
             break;
 
         case 0xD000: {    // Display.
@@ -205,6 +255,7 @@ void Chip8_Cpu_EmulateCycle(Chip8_Cpu *cpu) {
                     if ((cpu->gfx[gfx_buffer_index] == 0x01) && (((new_line >> i) & 0x01) == 0x00)) {
                         cpu->V[0x0F] = 0x01;
                     }
+
                     gfx_buffer_index ++;
                 }
             }
@@ -212,8 +263,66 @@ void Chip8_Cpu_EmulateCycle(Chip8_Cpu *cpu) {
             // Update program counter.
             cpu->program_counter += 2;
             break;
-        }                             
-    }
+        }
+        
+        case 0xE000:   
+            switch (cpu->op_code & 0x00FF)
+            {
+                case 0x009E: //(key() == Vx) -> V[x] = 1
+                    if (cpu->keypad[cpu->V[(cpu->op_code & 0x0F00) >> 8]]) { cpu->program_counter += 4; }
+                    else { cpu->program_counter += 2; }
+                    break;
 
-    // Update Timers
+                case 0x00A1: //(key() != Vx) -> V[x] = 0
+                    if (!cpu->keypad[cpu->V[(cpu->op_code & 0x0F00) >> 8]]) { cpu->program_counter += 4; }
+                    else { cpu->program_counter += 2; }
+                    break;
+
+                default:
+                    printf("[Error] Unkown Opcode: 0x%X\n", cpu->op_code);
+                    break;
+            }
+            break;
+
+        case 0xF000: {
+            uint8_t x = (cpu->op_code & 0x0F00) >> 8;
+            switch (cpu->op_code & 0x00FF)
+            {
+                case 0x0007: 
+                    cpu->V[x] = cpu->delay_timer;
+                    break;
+                case 0x000A: {
+                    uint8_t is_key_pressed = 0;
+                    uint8_t i = 0;
+                    do {
+                        if (cpu->keypad[i]) {
+                            is_key_pressed = 1;
+                            cpu->V[x] = i;
+                            cpu->program_counter += 2;
+                        }
+                        i++;
+                    } while(!is_key_pressed && (i < KEYPAD_SIZE));
+                    break;
+                }
+                case 0x0015:
+                    cpu->delay_timer = cpu->V[x];
+                    break;
+                case 0x0018:
+                    cpu->sound_timer = cpu->V[x];
+                    break;
+                case 0x001E:
+                    cpu->I += cpu->V[x];
+                    break;
+                case 0x0029:
+                    break;
+                case 0x0033:
+                    break;
+                case 0x0055:
+                    break;
+                case 0x0065:
+                    break;
+            }
+            break;
+        }
+    }
 }

@@ -71,7 +71,6 @@ void Chip8_Gfx_Display(Chip8_Gfx *gpu, uint32_t buffer[], uint8_t display_flag) 
         // Copy texture to full window. NULL arguments stretch it automatically!
         SDL_RenderCopy(gpu->renderer, gpu->texture, NULL, NULL);
         SDL_RenderPresent(gpu->renderer);
-        SDL_Delay(CHIP8_WINDOW_REFRESH_RATE_MS);
     }
 }
 
